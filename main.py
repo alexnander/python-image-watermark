@@ -2,12 +2,12 @@ import tkinter as tk
 import tkinter.filedialog as dlg
 from PIL import ImageTk, Image, UnidentifiedImageError, ImageDraw
 import datetime
+import math
 
 # global declarations
 text_widget = None
-selected_options = ("horizontal", "30 degrees", "-30 degrees")
+selected_options = ("horizontal", "45 degrees", "-45 degrees")
 selected = "horizontal"
-cropping_oversize = 220
 
 
 def open_image():
@@ -19,7 +19,15 @@ def open_image():
     try:
         image = Image.open(filename)
         watermark_text = text_widget.get()
-        draw_watermark(image, watermark_text)
+        image_watermarked = draw_watermark(image, watermark_text)
+        # save watermarked file
+        save_filename = dlg.asksaveasfilename(confirmoverwrite=True,
+                                              filetypes=[("Image file...", ".png")],
+                                              defaultextension=[("Image file...", ".png")],
+                                              initialfile=filename)
+        print(save_filename)
+        image_watermarked.save(save_filename)
+
     except UnidentifiedImageError:
         print(f"{filename} has unrecognized format.")
 
@@ -31,6 +39,11 @@ def set_selected(text):
 
 
 def draw_watermark(image, text):
+    # calculate the diagonal for rotations cropping (so tiling covers all corners)
+    cropping_oversize = math.floor(math.sqrt(image.size[0] ** 2 + image.size[1] ** 2))
+    # make sure cropping_oversize divides by 2
+    cropping_oversize = cropping_oversize + 1 if cropping_oversize % 2 else cropping_oversize
+
     watermark_text = Image.new("RGBA",
                                (image.size[0] + cropping_oversize, image.size[1] + cropping_oversize),
                                (255, 255, 255, 0))
@@ -44,19 +57,29 @@ def draw_watermark(image, text):
     count = 0  # number of columns drawn so far
     while x_offset < watermark_text.size[0]:
         while y_offset < watermark_text.size[1]:
-            draw_ctx.text((x_offset, y_offset), text, fill=(255, 255, 255, 128))
-            y_offset += 100
+            draw_ctx.text((x_offset, y_offset), text, fill=(255, 255, 255, 85))
+            y_offset += 150
         count += 1
         y_offset = count % 2 * 50 + 10
         x_offset += 150
+
+    angle = 0
+    if selected != "horizontal":
+        if '-' in selected:
+            angle = -45
+        else:
+            angle = 45
+
+    watermark_text = watermark_text.rotate(angle, resample=Image.BICUBIC)
 
     crop = cropping_oversize / 2
     watermark_text = watermark_text.crop((crop, crop,
                                           watermark_text.size[0] - crop, watermark_text.size[1] - crop))
     out = Image.alpha_composite(image.convert("RGBA"), watermark_text)
+
     out.show()
 
-    return
+    return out
 
 
 # Setup TK window and widgets
