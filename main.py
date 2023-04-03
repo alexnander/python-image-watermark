@@ -1,6 +1,6 @@
 import tkinter as tk
 import tkinter.filedialog as dlg
-from PIL import ImageTk, Image, UnidentifiedImageError, ImageDraw
+from PIL import Image, UnidentifiedImageError, ImageDraw
 import datetime
 import math
 
